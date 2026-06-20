@@ -11,11 +11,13 @@ export function TechTree() {
   const s = useStore();
   const buy = useStore((st) => st.buyTech);
 
-  const list = TECHS.filter((t) => !isCulled(t.tier, s.tier));
+  const list = TECHS.filter((t) => !isCulled(t.tier, s.tier) && s.discovered[t.id]);
+
+  // Révélation : pas de section (ni titre) tant qu'aucune recherche n'est découverte.
+  if (list.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xs uppercase tracking-[0.15em] text-muted">Recherche</h2>
       <div className="flex flex-col">
         {list.map((t) => {
           const purchased = s.purchased[t.id] === true;

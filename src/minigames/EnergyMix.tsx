@@ -1,6 +1,5 @@
-import Decimal from 'break_infinity.js';
 import { useStore } from '../state/store';
-import { formatMult } from '../format/notation';
+import { formatBonusPct } from '../format/notation';
 import {
   asMix,
   energyMixMultiplier,
@@ -30,9 +29,7 @@ export function EnergyMix() {
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between text-xs text-muted">
         <span>Mix énergétique</span>
-        <span className="font-num tabular-nums">
-          rendement ×{formatMult(new Decimal(mult))}
-        </span>
+        <span className="font-num tabular-nums">rendement {formatBonusPct(mult)}</span>
       </div>
       <div className="flex flex-col gap-1">
         {sources.map((s) => (

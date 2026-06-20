@@ -4,10 +4,11 @@ import Decimal from 'break_infinity.js';
 // Toute grandeur de jeu est un `Decimal` (break_infinity), jamais un `number` natif.
 
 // 'population' = LE score (ne se dépense JAMAIS, ne fait que monter).
-// 'resources'  = monnaie générale de construction (produite par la pop + les bâtiments).
+// 'food'       = Vivres : CONSOMMÉE par la population ; produite par la cueillette (plafonnée) + fermes.
+// 'resources'  = Matière : monnaie de construction (produite par le LABEUR de la population).
 // 'knowledge'  = monnaie de recherche (dépensée pour les techs).
 // 'energy'     = puissance harnachée (W) → moteur de capacité + porte Kardashev (dépensable).
-export type ResourceId = 'population' | 'resources' | 'knowledge' | 'energy';
+export type ResourceId = 'population' | 'food' | 'resources' | 'knowledge' | 'energy';
 
 /** Ressources dépensables (monnaies) — jamais la population. */
 export type SpendableId = Exclude<ResourceId, 'population'>;
@@ -68,6 +69,7 @@ export interface TierDef {
 export type Effect =
   | { kind: 'multiplyProduction'; resource: ResourceId; factor: number }
   | { kind: 'raiseCapacity'; factor: number }
+  | { kind: 'raiseFoodCeiling'; amount: number } // fermes/agriculture : + plafond de Vivres
   | { kind: 'multiplyClick'; factor: number }
   | { kind: 'unlockGenerator'; id: string }
   | { kind: 'unlockTier'; level: number };
@@ -80,16 +82,24 @@ export type UnlockCondition =
 
 export type DriveTarget = 'growth' | 'research' | 'construction';
 
+/** Répartition de la population entre tâches (poids relatifs). Cœur de la boucle Tier 0. */
+export interface Allocation {
+  forage: number; // cueillette → Vivres
+  labor: number; // labeur → Matière
+}
+
 /** Régime du clic, DÉRIVÉ de l'état (pas un champ figé). Cf. 05_mechanics §1.3. */
 export type ClickRegime = 'bootstrap' | 'drive';
 
 export type BuyQuantity = 1 | 10 | 100;
 
-export type ThemeName = 'instrument' | 'brutalist' | 'cosmic';
+// Un seul thème désormais (choix radical, cf. design-revelation-core). Conservé en union d'un
+// élément pour garder le contrat de save stable.
+export type ThemeName = 'instrument';
 
 export interface Settings {
   notation: 'full'; // CHIFFRES PLEINS uniquement (cf. architecture §6). 'scientific'/'named' supprimés.
-  theme: ThemeName; // charte active (design tokens, cf. architecture §9). Défaut : 'instrument'.
+  theme: ThemeName; // charte active (design tokens). Toujours 'instrument'.
   transhumanLabels: boolean; // flag : relabellisation cosmétique tardive (cf. game-design §3.4)
 }
 
@@ -103,6 +113,8 @@ export interface GameState {
   // accélérant du clic et sa cible (le "goulot" choisi), en régime pilotage
   drive: Decimal;
   driveTarget: DriveTarget;
+  // --- boucle de subsistance Tier 0 : répartition de la population ---
+  allocation: Allocation;
   // --- amorçage & automatisation (cf. 05_mechanics §1-2) ---
   // Réservé : on peut distinguer les autoclickers de l'UI. En pratique l'autoclicker (hunting_band)
   // vit dans `owned` comme un générateur de population. Gardé pour le contrat de schéma.

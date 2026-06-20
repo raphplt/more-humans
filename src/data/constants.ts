@@ -1,14 +1,12 @@
 import Decimal from 'break_infinity.js';
 
-// Constantes physiques (≈, suffisantes pour le jeu). Cf. 02_PHASES_AND_CONTENT §1.
-// Servent de portes de phase et de flavor, jamais de cours.
 
-export const POP_START = new Decimal(0); // le jeu démarre VIDE : le clic crée les 1ers Humains (cf. 05_mechanics §1)
-export const POP_NEOLITHIC = new Decimal('5e6'); // premier repère atteint APRÈS l'amorçage
-export const POP_TODAY = new Decimal('8e9'); // repère mi-Tier I
-export const POWER_TODAY = new Decimal('2e13'); // ~18 TW, on démarre Type ~0.7
+export const POP_START = new Decimal(0);
+export const POP_NEOLITHIC = new Decimal('5e6');
+export const POP_TODAY = new Decimal('8e9');
+export const POWER_TODAY = new Decimal('2e13');
 
-// Portes de Kardashev (puissance harnachée en W).
+// Portes de Kardashev
 export const KARDASHEV_I = new Decimal('1e16'); // planétaire
 export const EARTH_SOLAR_INFLUX = new Decimal('1.7e17'); // plafond planétaire
 export const KARDASHEV_II = new Decimal('3.8e26'); // luminosité du Soleil

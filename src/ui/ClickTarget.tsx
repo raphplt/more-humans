@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import { clickRegime } from '../model/engine';
-import { formatMult } from '../format/notation';
+import { formatBonusPct } from '../format/notation';
 import type { DriveTarget } from '../model/types';
 
 // Le clic a deux régimes (cf. 05_mechanics §1, claude.md règle 7) :
@@ -38,7 +38,10 @@ export function ClickTarget() {
         onClick={click}
         className="w-full rounded-base border border-accent py-5 text-base font-semibold text-accent transition hover:bg-accent hover:text-bg active:scale-[0.99]"
       >
-        Pousser <span className="font-num tabular-nums">×{formatMult(drive.add(1))}</span>
+        Pousser
+        {drive.gt(0) && (
+          <span className="font-num tabular-nums"> {formatBonusPct(drive.add(1).toNumber())}</span>
+        )}
       </button>
       <div className="grid grid-cols-3 gap-px overflow-hidden rounded-base border border-line">
         {TARGETS.map((t) => (

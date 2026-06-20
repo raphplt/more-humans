@@ -11,22 +11,22 @@ export const GENERATORS: GeneratorDef[] = [
     id: 'hunting_band',
     tier: 0,
     name: 'Bande de chasseurs-cueilleurs',
-    description: 'Automatise les naissances : produit de la population en continu (autoclicker).',
-    produces: { population: new Decimal(1) }, // alimente le terme additif d'amorçage A
-    baseCost: { resources: new Decimal(5) }, // payé en Ressources (JAMAIS en Humains)
-    costGrowth: 1.15,
-    discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(1) },
+    description: 'Première automatisation : ramène lentement de nouveaux Humains.',
+    produces: { population: new Decimal('0.06') }, // autoclicker lent (alimente l'additif d'amorçage)
+    baseCost: { food: new Decimal(80) }, // payé en Vivres (JAMAIS en Humains)
+    costGrowth: 1.3,
+    discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(25) },
   },
   {
     id: 'farmland',
     tier: 0,
     name: 'Champs cultivés',
-    description: 'Surplus alimentaire : produit des Ressources, relève la capacité ET active la reproduction.',
-    produces: { resources: new Decimal(2) },
-    baseCost: { resources: new Decimal(20) },
-    costGrowth: 1.1,
-    discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(20) },
-    effects: [{ kind: 'raiseCapacity', factor: 1.08 }],
+    description: 'Agriculture : relève la capacité ET fait croître la population d’elle-même.',
+    produces: {},
+    baseCost: { food: new Decimal(300) },
+    costGrowth: 1.22,
+    discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(25) },
+    effects: [{ kind: 'raiseFoodCeiling', amount: 25 }], // +25 à la capacité de population par ferme
   },
   {
     id: 'woodfire',
@@ -109,6 +109,39 @@ export const GENERATORS: GeneratorDef[] = [
     baseCost: { resources: new Decimal('5e11'), energy: new Decimal('1e11') },
     costGrowth: 1.22,
     unlock: { kind: 'tech', id: 'fusion' },
+  },
+
+  // ---------- Tier II — Stellaire / essaim de Dyson (cf. content §5) ----------
+  {
+    id: 'asteroid_mining',
+    tier: 2,
+    name: "Minage d'astéroïdes",
+    description: "Matière première de l'essaim : énormément de Ressources.",
+    produces: { resources: new Decimal('1e9') },
+    baseCost: { resources: new Decimal('1e8'), energy: new Decimal('1e15') },
+    costGrowth: 1.18,
+    unlock: { kind: 'tier', atLeast: 2 },
+  },
+  {
+    id: 'orbital_collector',
+    tier: 2,
+    name: 'Collecteur orbital',
+    description: "Capte l'énergie du Soleil — palier de l'essaim de Dyson vers le Type II.",
+    produces: { energy: new Decimal('1e22') },
+    baseCost: { resources: new Decimal('1e16') },
+    costGrowth: 1.2,
+    unlock: { kind: 'tier', atLeast: 2 },
+  },
+  {
+    id: 'space_habitat',
+    tier: 2,
+    name: 'Habitat spatial',
+    description: 'La population vit hors-sol : relève fortement la capacité.',
+    produces: {},
+    baseCost: { resources: new Decimal('1e15'), energy: new Decimal('1e18') },
+    costGrowth: 1.18,
+    unlock: { kind: 'tier', atLeast: 2 },
+    effects: [{ kind: 'raiseCapacity', factor: 1.2 }],
   },
 ];
 

@@ -3,12 +3,18 @@ import type { ThemeName } from '../model/types';
 // Version de save + migrations. Cf. architecture §5.
 // Une save existante DOIT survivre aux updates : toute évolution de forme = +1 version + migration.
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** Forme sérialisée (les Decimal sont des strings). Volontairement permissive entre versions. */
 export interface SerializedSave {
   version: number;
-  resources: { population: string; resources: string; knowledge: string; energy: string };
+  resources: {
+    population: string;
+    food: string;
+    resources: string;
+    knowledge: string;
+    energy: string;
+  };
   capacity: string;
   tier: number;
   owned: Record<string, number>;
@@ -16,6 +22,7 @@ export interface SerializedSave {
   clickPower: string;
   drive: string;
   driveTarget: string;
+  allocation: { forage: number; labor: number };
   autoclickers: Record<string, number>;
   buyQuantity: number;
   discovered: Record<string, boolean>;
@@ -52,6 +59,16 @@ const migrations: Record<number, Migration> = {
       ...raw,
       version: 3,
       resources: { ...res, resources: (res.resources as string) ?? '0' },
+    };
+  },
+  // v3 → v4 : boucle de subsistance (Vivres + allocation). Défauts : 100 Vivres, 3/1.
+  3: (raw) => {
+    const res = (raw.resources ?? {}) as Record<string, unknown>;
+    return {
+      ...raw,
+      version: 4,
+      resources: { ...res, food: (res.food as string) ?? '100' },
+      allocation: raw.allocation ?? { forage: 1, labor: 0 },
     };
   },
 };

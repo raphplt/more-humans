@@ -13,14 +13,16 @@ export function GeneratorList() {
   const s = useStore();
   const buy = useStore((st) => st.buyGenerator);
 
-  const list = activeGenerators(s);
+  const list = activeGenerators(s).filter((g) => s.discovered[g.id]);
   const rente = culledProduction(s);
   const renteEntries = Object.entries(rente) as [ResourceId, Decimal][];
 
+  // Révélation : tant qu'aucun générateur n'est découvert, la section n'existe pas (ni titre).
+  if (list.length === 0) return null;
+
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-xs uppercase tracking-[0.15em] text-muted">Générateurs</h2>
+      <div className="flex justify-end">
         <BuyQuantitySelector />
       </div>
 

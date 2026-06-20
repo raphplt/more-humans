@@ -13,6 +13,7 @@ export function serialize(state: GameState): SerializedSave {
     version: SAVE_VERSION,
     resources: {
       population: state.resources.population.amount.toString(),
+      food: state.resources.food.amount.toString(),
       resources: state.resources.resources.amount.toString(),
       knowledge: state.resources.knowledge.amount.toString(),
       energy: state.resources.energy.amount.toString(),
@@ -24,6 +25,7 @@ export function serialize(state: GameState): SerializedSave {
     clickPower: state.clickPower.toString(),
     drive: state.drive.toString(),
     driveTarget: state.driveTarget,
+    allocation: state.allocation,
     autoclickers: state.autoclickers,
     buyQuantity: state.buyQuantity,
     discovered: state.discovered,
@@ -37,6 +39,7 @@ export function deserialize(raw: SerializedSave): GameState {
   return {
     resources: {
       population: { amount: new Decimal(raw.resources.population) },
+      food: { amount: new Decimal(raw.resources.food) },
       resources: { amount: new Decimal(raw.resources.resources) },
       knowledge: { amount: new Decimal(raw.resources.knowledge) },
       energy: { amount: new Decimal(raw.resources.energy) },
@@ -48,6 +51,7 @@ export function deserialize(raw: SerializedSave): GameState {
     clickPower: new Decimal(raw.clickPower),
     drive: new Decimal(raw.drive),
     driveTarget: raw.driveTarget as DriveTarget,
+    allocation: raw.allocation ?? { forage: 1, labor: 0 },
     autoclickers: raw.autoclickers ?? {},
     buyQuantity: (raw.buyQuantity as BuyQuantity) ?? 1,
     discovered: raw.discovered ?? {},

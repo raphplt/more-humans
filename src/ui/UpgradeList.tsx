@@ -12,12 +12,13 @@ export function UpgradeList() {
   const s = useStore();
   const buy = useStore((st) => st.buyUpgrade);
 
-  const list = UPGRADES.filter((u) => !isCulled(u.tier, s.tier) && !s.purchased[u.id]);
+  const list = UPGRADES.filter(
+    (u) => !isCulled(u.tier, s.tier) && !s.purchased[u.id] && s.discovered[u.id],
+  );
   if (list.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xs uppercase tracking-[0.15em] text-muted">Améliorations</h2>
       <div className="flex flex-col">
         {list.map((u) => {
           const affordable = canAfford(s, u.cost);
