@@ -1,0 +1,58 @@
+/* Design tokens commutables. Cf. 04_art_direction §3, architecture §9.
+   UN seul jeu de variables ; les valeurs changent selon [data-theme] sur <html>.
+   Aucun composant ne connaît la charte active : il n'utilise que des classes sémantiques. */
+
+:root,
+[data-theme='instrument'] {
+  /* A. Instrument scientifique (défaut) : panneau de contrôle, lignes fines, données au 1er plan. */
+  --bg: #0b0f14; /* encre bleutée/charbon, pas un noir pur */
+  --surface: #11171f;
+  --line: #1e2935;
+  --text: #dfe7ef; /* blanc cassé */
+  --muted: #7d8a99;
+  --accent: #38bdf8; /* un seul accent froid (cyan instrument) */
+  --accent-soft: #1f6f86;
+  --positive: #4ade80;
+  --warn: #fbbf24;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius: 4px;
+  --space: 8px;
+  --line-w: 1px;
+}
+
+[data-theme='brutalist'] {
+  /* B. Brutalisme typographique : la typo EST l'interface ; une seule couleur saturée. */
+  --bg: #050505;
+  --surface: #0d0d0d;
+  --line: #222222;
+  --text: #f5f5f5;
+  --muted: #888888;
+  --accent: #ff4d00;
+  --accent-soft: #7a2600;
+  --positive: #b6ff00;
+  --warn: #ffb300;
+  --font-ui: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-num: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 0px;
+  --space: 8px;
+  --line-w: 1px;
+}
+
+[data-theme='cosmic'] {
+  /* C. Minimalisme cosmique : espace profond, accent lumineux unique, halos. */
+  --bg: #070512;
+  --surface: #0e0a1f;
+  --line: #241b3d;
+  --text: #e6e1ff;
+  --muted: #8b80b3;
+  --accent: #a78bfa;
+  --accent-soft: #4c3a82;
+  --positive: #6ee7b7;
+  --warn: #fcd34d;
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 12px;
+  --space: 8px;
+  --line-w: 1px;
+}

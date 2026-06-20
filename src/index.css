@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+@import './theme/tokens.css';
+
+/* Tailwind consomme les tokens : les classes sémantiques (bg-surface, text-muted, border-line…)
+   pointent vers var(--…). `inline` garde la référence var() → switch instantané via data-theme. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-warn: var(--warn);
+  --font-ui: var(--font-ui);
+  --font-num: var(--font-num);
+  --radius-base: var(--radius);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+/* Révélation progressive : micro-transition d'entrée d'un élément découvert (cf. 04_art_direction §6). */
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.discoverable-enter {
+  animation: appear 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discoverable-enter {
+    animation: none;
+  }
+}
