@@ -25,8 +25,14 @@ export function PhaseView() {
   return (
     <section className="flex flex-col gap-4">
       {showProgress && (
-        <div className="h-1 w-full bg-line">
-          <div className="h-1 bg-accent transition-all" style={{ width: `${pct}%` }} />
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between text-xs text-muted">
+            <span>Vers {tierByLevel(tier + 1)?.name ?? 'les limites physiques'}</span>
+            <span className="font-num tabular-nums">{Math.floor(pct)} %</span>
+          </div>
+          <div className="h-1 w-full bg-line">
+            <div className="h-1 bg-accent transition-all" style={{ width: `${pct}%` }} />
+          </div>
         </div>
       )}
       {Minigame && <Minigame />}

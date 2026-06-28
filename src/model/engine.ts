@@ -21,7 +21,7 @@ const FOOD_BASE = new Decimal(1); // revenu de Vivres de base du territoire (pop
 const FORAGE_RATE = 0.07; // Vivres produits par cueilleur/s (revenu modeste, NON plafonné)
 const LABOR_RATE = 0.07; // Matière produite par laboureur/s
 const BASE_POP_CAP = new Decimal(25); // capacité initiale (avant fermes) — plafonne le clic (fondation)
-const CAPACITY_ENERGY_SCALE = new Decimal('3e12'); // l'énergie ne dope la capacité qu'aux échelles Kardashev
+const CAPACITY_ENERGY_SCALE = new Decimal('3.2e13'); // l'énergie ne dope la capacité qu'aux échelles Kardashev
 const KNOWLEDGE_PER_CAPITA = new Decimal('1e-4'); // savoir passif/hab./s
 const BASE_GROWTH_RATE = 0.005; // r de la logistique — n'agit qu'après l'agriculture
 const DRIVE_DECAY_PER_S = 0.5; // la poussée du clic retombe
@@ -95,7 +95,8 @@ export function collectModifiers(state: GameState): ActiveModifiers {
     if (state.purchased[tech.id]) for (const e of tech.effects) applyEffect(mods, e, 1);
   }
   for (const up of UPGRADES) {
-    if (state.purchased[up.id]) for (const e of up.effects) applyEffect(mods, e, 1);
+    const level = state.upgradeLevels[up.id] ?? 0;
+    if (level > 0) for (const e of up.effects) applyEffect(mods, e, level);
   }
   for (const gen of GENERATORS) {
     const owned = state.owned[gen.id] ?? 0;

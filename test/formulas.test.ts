@@ -1,17 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import Decimal from 'break_infinity.js';
-import type { GeneratorDef } from '../src/model/types';
+import type { GeneratorDef, UpgradeDef } from '../src/model/types';
 import {
   canAfford,
   generatorBatchCost,
   generatorCost,
   isUnlocked,
   logisticDelta,
+  upgradeBatchCost,
 } from '../src/model/formulas';
 import { initialState } from '../src/model/actions';
 
 const def = (growth: number, base: Partial<Record<string, Decimal>>): GeneratorDef =>
   ({ id: 'x', tier: 0, name: 'x', description: '', produces: {}, baseCost: base, costGrowth: growth }) as GeneratorDef;
+
+const upDef = (growth: number, cost: Partial<Record<string, Decimal>>): UpgradeDef =>
+  ({ id: 'u', tier: 0, name: 'u', description: '', cost, costGrowth: growth, effects: [] }) as UpgradeDef;
 
 describe('generatorBatchCost', () => {
   it('croissance 1 → coût linéaire base·n', () => {
@@ -32,6 +36,13 @@ describe('generatorBatchCost', () => {
   it('generatorCost == batch n=1', () => {
     const d = def(1.18, { resources: new Decimal(50) });
     expect(generatorCost(d, 3).resources!.eq(generatorBatchCost(d, 3, 1).resources!)).toBe(true);
+  });
+});
+
+describe('upgradeBatchCost (améliorations incrémentales)', () => {
+  it('même somme géométrique, à partir du niveau courant', () => {
+    expect(upgradeBatchCost(upDef(2, { knowledge: new Decimal(100) }), 0, 3).knowledge!.eq(700)).toBe(true);
+    expect(upgradeBatchCost(upDef(2, { knowledge: new Decimal(100) }), 2, 1).knowledge!.eq(400)).toBe(true);
   });
 });
 

@@ -1,12 +1,32 @@
 import { useStore } from '../state/store';
+import { ACHIEVEMENTS } from '../data/achievements.data';
 import { formatInt, formatWatts } from '../format/notation';
 
-// Fin provisoire de la v1 : franchir le Type II (énergie ≥ 3,8×10²⁶ W). Climax « tu as construit
-// l'essaim de Dyson, l'humanité est devenue stellaire ». La suite (galactique → endgame entropie)
-// est différée (cf. périmètre v1). Écran dismissable : on peut continuer à jouer.
+// Fin de la v1 : franchir le Type II (énergie ≥ 3,8×10²⁶ W). Climax « tu as bâti l'essaim de Dyson »,
+// avec le bilan de la run. La suite (galactique → endgame entropie) est différée. Écran dismissable.
+function fmtDuration(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`;
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="font-num text-lg tabular-nums text-fg">{value}</span>
+      <span className="text-xs uppercase tracking-[0.15em] text-muted">{label}</span>
+    </div>
+  );
+}
+
 export function EndScreen({ onDismiss }: { onDismiss: () => void }) {
   const population = useStore((s) => s.resources.population.amount);
   const energy = useStore((s) => s.resources.energy.amount);
+  const playtimeMs = useStore((s) => s.playtimeMs);
+  const totalClicks = useStore((s) => s.totalClicks);
+  const achievements = useStore((s) => s.achievements);
+  const unlocked = ACHIEVEMENTS.filter((a) => achievements[a.id]).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/95 px-6">
@@ -21,6 +41,12 @@ export function EndScreen({ onDismiss }: { onDismiss: () => void }) {
         <div className="flex flex-col gap-1 font-num tabular-nums">
           <div className="text-2xl text-fg">{formatInt(population)} Humains</div>
           <div className="text-sm text-muted">{formatWatts(energy)}</div>
+        </div>
+
+        <div className="grid w-full grid-cols-3 gap-4 border-t border-line pt-5">
+          <Stat label="Temps" value={fmtDuration(playtimeMs)} />
+          <Stat label="Clics" value={totalClicks.toLocaleString('fr-FR')} />
+          <Stat label="Succès" value={`${unlocked}/${ACHIEVEMENTS.length}`} />
         </div>
 
         <p className="text-xs text-muted">

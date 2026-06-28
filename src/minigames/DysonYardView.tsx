@@ -31,7 +31,7 @@ export function DysonYardView() {
       <div className="flex items-center gap-3 text-sm">
         <button
           onClick={() => adjust(-10)}
-          className="rounded-base border border-line px-2 leading-none hover:text-accent"
+          className="grid h-7 place-items-center rounded-base border border-line px-2 hover:text-accent"
         >
           ← Habitats
         </button>
@@ -44,7 +44,7 @@ export function DysonYardView() {
         </div>
         <button
           onClick={() => adjust(10)}
-          className="rounded-base border border-line px-2 leading-none hover:text-accent"
+          className="grid h-7 place-items-center rounded-base border border-line px-2 hover:text-accent"
         >
           Collecteurs →
         </button>

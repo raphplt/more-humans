@@ -3,19 +3,14 @@ import { loadGame, saveGame } from './state/save';
 import { startLoop } from './core/loop';
 import { offlineElapsedMs } from './core/time';
 import { step } from './model/engine';
-import Decimal from 'break_infinity.js';
-import type { GameState } from './model/types';
+import type { GameState, OfflineRecap } from './model/types';
 
 // Orchestrateur : charge la save, rejoue la progression hors-ligne, démarre la boucle et l'autosave.
 // Appelé une fois au démarrage par main.tsx. La logique de jeu vit dans engine.ts.
 
 const AUTOSAVE_MS = 10_000;
 const OFFLINE_STEP_S = 1; // pas plus grossier pour rejouer une longue absence rapidement
-
-export interface OfflineRecap {
-  elapsedMs: number;
-  populationGain: Decimal;
-}
+const RECAP_MIN_MS = 60_000; // ne montrer le bilan qu'au-delà d'une minute d'absence
 
 let started = false;
 let lastRecap: OfflineRecap | null = null;
@@ -44,6 +39,9 @@ export function startGame(): OfflineRecap | null {
     useStore.getState().hydrate(state);
     recap = { elapsedMs, populationGain: state.resources.population.amount.sub(before) };
     lastRecap = recap;
+    if (elapsedMs >= RECAP_MIN_MS && recap.populationGain.gt(0)) {
+      useStore.getState().setOfflineRecap(recap);
+    }
   }
 
   startLoop((dt) => useStore.getState().tick(dt));

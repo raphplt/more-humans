@@ -7,7 +7,7 @@ import {
   step,
   BOOTSTRAP_DONE,
 } from '../src/model/engine';
-import { initialState } from '../src/model/actions';
+import { applyBuyUpgrade, initialState } from '../src/model/actions';
 
 describe('clickRegime', () => {
   it('amorçage sous le seuil, pilotage au-dessus', () => {
@@ -60,6 +60,30 @@ describe('capacité', () => {
     const high = initialState();
     high.owned = { coal_plant: 50 };
     expect(computeFlows(high).capacity.gt(computeFlows(low).capacity)).toBe(true);
+  });
+});
+
+describe('améliorations incrémentales', () => {
+  it('monte le niveau, déduit le coût, applique l’effet par niveau', () => {
+    const s = initialState();
+    s.purchased = { writing: true };
+    s.resources.population.amount = new Decimal(1000); // sinon production de savoir nulle
+    s.resources.knowledge.amount = new Decimal(1000);
+    const base = computeFlows(s).knowledge;
+
+    const s1 = applyBuyUpgrade(s, 'apprenticeship'); // ×1.15 savoir / niveau, coût 150
+    expect(s1.upgradeLevels['apprenticeship']).toBe(1);
+    expect(s1.resources.knowledge.amount.eq(850)).toBe(true);
+
+    const s2 = applyBuyUpgrade(s1, 'apprenticeship');
+    expect(s2.upgradeLevels['apprenticeship']).toBe(2);
+    expect(computeFlows(s2).knowledge.gt(base)).toBe(true);
+  });
+
+  it('no-op si non débloquée', () => {
+    const s = initialState();
+    s.resources.knowledge.amount = new Decimal(1000);
+    expect(applyBuyUpgrade(s, 'apprenticeship')).toBe(s); // writing non acquis
   });
 });
 

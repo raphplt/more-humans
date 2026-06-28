@@ -5,32 +5,41 @@ import type {
   GeneratorDef,
   ResourceId,
   UnlockCondition,
+  UpgradeDef,
 } from './types';
 
 // Toutes les formules du jeu sont centralisées ici. Cf. 01_ARCHITECTURE §2 règle 5.
 // Aucune formule en dur dans l'UI ou les fichiers de données.
 
 /**
- * Coût d'un LOT de `n` achats d'un générateur, calculé d'un coup (somme géométrique) —
+ * Facteur de coût d'un LOT de `n` achats à partir de `owned` déjà possédés (somme géométrique) —
  * ne JAMAIS boucler n achats. Cf. architecture §8 / 05_mechanics §5.1 :
- *   coût(owned, n) = base · g^owned · (g^n − 1) / (g − 1)   (g = costGrowth ; g=1 → base·n)
+ *   facteur(owned, n) = g^owned · (g^n − 1) / (g − 1)   (g = costGrowth ; g=1 → n)
  */
+function batchFactor(growth: number, owned: number, n: number): Decimal {
+  return growth === 1
+    ? new Decimal(n)
+    : Decimal.pow(growth, owned).mul(Decimal.sub(Decimal.pow(growth, n), 1)).div(growth - 1);
+}
+
+function scaleCost(
+  base: Partial<Record<ResourceId, Decimal>>,
+  factor: Decimal,
+): Partial<Record<ResourceId, Decimal>> {
+  const out: Partial<Record<ResourceId, Decimal>> = {};
+  for (const [res, amt] of Object.entries(base) as [ResourceId, Decimal][]) {
+    out[res] = amt.mul(factor);
+  }
+  return out;
+}
+
+/** Coût d'un lot de `n` générateurs à partir de `owned` possédés. */
 export function generatorBatchCost(
   def: GeneratorDef,
   owned: number,
   n: number,
 ): Partial<Record<ResourceId, Decimal>> {
-  const g = def.costGrowth;
-  // facteur géométrique commun à toutes les ressources du coût
-  const factor =
-    g === 1
-      ? new Decimal(n)
-      : Decimal.pow(g, owned).mul(Decimal.sub(Decimal.pow(g, n), 1)).div(g - 1);
-  const out: Partial<Record<ResourceId, Decimal>> = {};
-  for (const [res, base] of Object.entries(def.baseCost) as [ResourceId, Decimal][]) {
-    out[res] = base.mul(factor);
-  }
-  return out;
+  return scaleCost(def.baseCost, batchFactor(def.costGrowth, owned, n));
 }
 
 /** Coût d'un achat unitaire (raccourci de generatorBatchCost avec n = 1). */
@@ -39,6 +48,15 @@ export function generatorCost(
   owned: number,
 ): Partial<Record<ResourceId, Decimal>> {
   return generatorBatchCost(def, owned, 1);
+}
+
+/** Coût d'un lot de `n` niveaux d'une amélioration à partir du niveau courant. */
+export function upgradeBatchCost(
+  def: UpgradeDef,
+  level: number,
+  n: number,
+): Partial<Record<ResourceId, Decimal>> {
+  return scaleCost(def.cost, batchFactor(def.costGrowth, level, n));
 }
 
 /** Le joueur peut-il payer ce coût ? */

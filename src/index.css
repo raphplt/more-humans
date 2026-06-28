@@ -51,8 +51,65 @@ body {
   animation: appear 200ms ease-out;
 }
 
+/* Juice : « +N » flottant au clic d'amorçage. */
+@keyframes float-up {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -34px);
+  }
+}
+
+.float-pop {
+  animation: float-up 750ms ease-out forwards;
+}
+
+/* Célébration de franchissement de tier (nouvelle ère). */
+@keyframes tier-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+.tier-flash {
+  animation: tier-flash 3400ms ease-out forwards;
+}
+
+/* Toast de succès : entrée par le bas. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .discoverable-enter {
+  .discoverable-enter,
+  .float-pop,
+  .tier-flash {
     animation: none;
   }
 }

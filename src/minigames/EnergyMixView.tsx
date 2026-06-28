@@ -47,13 +47,13 @@ export function EnergyMixView() {
             <div className="flex gap-1">
               <button
                 onClick={() => adjust(s.id, -1)}
-                className="rounded-base border border-line px-2 leading-none hover:text-accent"
+                className="grid h-7 w-7 place-items-center rounded-base border border-line hover:text-accent"
               >
                 −
               </button>
               <button
                 onClick={() => adjust(s.id, 1)}
-                className="rounded-base border border-line px-2 leading-none hover:text-accent"
+                className="grid h-7 w-7 place-items-center rounded-base border border-line hover:text-accent"
               >
                 +
               </button>

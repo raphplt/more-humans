@@ -2,11 +2,10 @@ import Decimal from 'break_infinity.js';
 import type { ResourceId } from '../model/types';
 import { kardashevType } from '../data/constants';
 
-// Libellés FR courts des ressources (pour les coûts/affichages).
 const RES_LABEL: Record<ResourceId, string> = {
   population: 'hab.',
   food: 'Vivres',
-  resources: 'Matière', // id interne 'resources' ; libellé joueur « Matière » (cf. naming-and-upgrades)
+  resources: 'Matière',
   knowledge: 'Savoir',
   energy: 'W',
 };
@@ -15,12 +14,20 @@ export function resourceLabel(id: ResourceId): string {
   return RES_LABEL[id];
 }
 
-// Formatage unité-conscient des Decimal — CHIFFRES PLEINS, JAMAIS d'exposant.
-// Cf. architecture §6 / 05_mechanics §4. Interdit : 1.23e16, 10⁷, notation scientifique/nommée.
+// Notation chiffres pleins, JAMAIS d'exposant (cf. architecture §6 / 05_mechanics §4, règle 10).
+// Sous un million : chiffres groupés par milliers. Au-delà : mots pleins de l'ÉCHELLE LONGUE
+// française (million 1e6, milliard 1e9, billion 1e12, billiard 1e15, trillion 1e18…) — lisible d'un
+// coup d'œil et conforme au repli « mots français pleins » autorisé par la règle.
 
-const THIN = ' '; // espace fine insécable (séparateur de milliers)
+const THIN = ' ';
 
-/** Regroupe une chaîne de chiffres par milliers avec une espace fine. */
+const LONG_SCALE = [
+  'million', 'milliard', 'billion', 'billiard', 'trillion', 'trilliard',
+  'quadrillion', 'quadrilliard', 'quintillion', 'quintilliard', 'sextillion', 'sextilliard',
+  'septillion', 'septilliard', 'octillion', 'octilliard', 'nonillion', 'nonilliard',
+  'décillion', 'décilliard', 'undécillion', 'undécilliard', 'duodécillion', 'duodécilliard',
+];
+
 function groupThousands(digits: string): string {
   let out = '';
   for (let i = 0; i < digits.length; i++) {
@@ -30,56 +37,51 @@ function groupThousands(digits: string): string {
   return out;
 }
 
-/**
- * Reconstruit la chaîne décimale ENTIÈRE d'un Decimal sans repasser par `Number`
- * (qui ment au-delà de ~1e15). Les chiffres de poids faible au-delà de la précision
- * disponible sont du bruit : on les rend comme `0` (l'ordre de grandeur plein suffit).
- */
+// Chaîne décimale ENTIÈRE sans repasser par Number (qui ment au-delà de ~1e15) — repli extrême.
 function fullInteger(d: Decimal): string {
-  if (d.lt(0)) return '-' + fullInteger(d.neg());
   if (d.lt(1)) return '0';
-  const exp = d.exponent; // entier ; valeur ≈ mantissa · 10^exp
-  // 15 chiffres significatifs depuis la mantisse (1 avant la virgule + 14 après).
+  const exp = d.exponent;
   const sig = d.mantissa.toFixed(14).replace('.', '');
-  let digits: string;
   const zerosAfter = exp - 14;
-  if (zerosAfter >= 0) {
-    digits = sig + '0'.repeat(zerosAfter);
-  } else {
-    digits = sig.slice(0, exp + 1) || '0';
-  }
-  return digits;
+  return zerosAfter >= 0 ? sig + '0'.repeat(zerosAfter) : sig.slice(0, exp + 1) || '0';
 }
 
-/**
- * Format de jeu par défaut : chiffres pleins ENTIERS, groupés par milliers.
- * ZÉRO décimale à l'écran (règle de design) — on plancher systématiquement.
- */
+// Nombre + nom d'échelle longue (1-3 chiffres significatifs devant l'unité).
+function named(d: Decimal): string {
+  const exp = d.exponent;
+  const unitExp = Math.floor(exp / 3) * 3;
+  const k = unitExp / 3 - 2;
+  if (k < 0 || k >= LONG_SCALE.length) return groupThousands(fullInteger(d));
+  const leading = d.mantissa * Math.pow(10, exp - unitExp);
+  const rounded = leading < 100 ? Math.round(leading * 10) / 10 : Math.round(leading);
+  const numStr = (Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1)).replace('.', ',');
+  return `${numStr} ${LONG_SCALE[k]}${rounded >= 2 ? 's' : ''}`;
+}
+
+/** Format de jeu : entiers, ZÉRO décimale sous un million, mots pleins au-delà. */
 export function formatFull(d: Decimal): string {
-  if (d.abs().lt(1000)) return Math.floor(d.toNumber()).toString();
-  return groupThousands(fullInteger(d));
+  if (d.lt(0)) return '-' + formatFull(d.neg());
+  if (d.lt(1000)) return Math.floor(d.toNumber()).toString();
+  if (d.lt(1000000)) return groupThousands(fullInteger(d));
+  return named(d);
 }
 
-/** Alias explicite pour les grandeurs entières (population, etc.). */
 export function formatInt(d: Decimal): string {
   return formatFull(d);
 }
 
-/** Bonus en pourcentage ENTIER (jamais de virgule), ex. factor 1.33 → "+33 %". */
 export function formatBonusPct(factor: number): string {
   return `+${Math.round((factor - 1) * 100)} %`;
 }
 
 /**
- * Type de Kardashev affichable, ex. "Type 0.73". SEULE valeur à décimales tolérée : c'est un index
- * scientifique (échelle de Sagan), pas un montant de jeu — le repère-signature de progression.
- * Clampé à 0 (la formule devient négative sous 10⁶ W : ne jamais afficher "Type -0.53").
+ * Type de Kardashev affichable, ex. "Type 0.73". SEULE valeur à décimales tolérée : index
+ * scientifique (échelle de Sagan), pas un montant de jeu. Clampé à 0 (négatif sous 10⁶ W).
  */
 export function kardashevLabel(power: Decimal): string {
   return `Type ${Math.max(0, kardashevType(power)).toFixed(2)}`;
 }
 
-/** Énergie en W (chiffres pleins, sans décimale). */
 export function formatWatts(power: Decimal): string {
   return `${formatInt(power)} W`;
 }

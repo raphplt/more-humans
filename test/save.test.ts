@@ -53,6 +53,9 @@ describe('migrations de save', () => {
     expect((m.resources as Record<string, string>).food).toBe('50');
     expect((m.settings as Record<string, unknown>).notation).toBe('full');
     expect(m.allocation).toBeDefined();
+    expect(m.upgradeLevels).toBeDefined();
+    expect(m.achievements).toBeDefined();
+    expect(m.playtimeMs).toBe(0);
     expect(() => deserialize(m as never)).not.toThrow();
   });
 });

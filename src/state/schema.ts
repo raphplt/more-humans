@@ -1,9 +1,10 @@
 import type { ThemeName } from '../model/types';
+import { UPGRADES } from '../data/upgrades.data';
 
 // Version de save + migrations. Cf. architecture §5.
 // Une save existante DOIT survivre aux updates : toute évolution de forme = +1 version + migration.
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 6;
 
 /** Forme sérialisée (les Decimal sont des strings). Volontairement permissive entre versions. */
 export interface SerializedSave {
@@ -19,6 +20,7 @@ export interface SerializedSave {
   tier: number;
   owned: Record<string, number>;
   purchased: Record<string, boolean>;
+  upgradeLevels: Record<string, number>;
   clickPower: string;
   drive: string;
   driveTarget: string;
@@ -27,6 +29,9 @@ export interface SerializedSave {
   buyQuantity: number;
   discovered: Record<string, boolean>;
   minigame?: unknown;
+  totalClicks: number;
+  playtimeMs: number;
+  achievements: Record<string, boolean>;
   lastSaved: number;
   settings: { notation: 'full'; theme: ThemeName; transhumanLabels: boolean };
 }
@@ -71,6 +76,21 @@ const migrations: Record<number, Migration> = {
       allocation: raw.allocation ?? { forage: 1, labor: 0 },
     };
   },
+  // v4 → v5 : améliorations incrémentales. Les anciens upgrades booléens deviennent niveau 1.
+  4: (raw) => {
+    const purchased = (raw.purchased ?? {}) as Record<string, boolean>;
+    const levels: Record<string, number> = {};
+    for (const u of UPGRADES) if (purchased[u.id]) levels[u.id] = 1;
+    return { ...raw, version: 5, upgradeLevels: raw.upgradeLevels ?? levels };
+  },
+  // v5 → v6 : instrumentation (clics, temps de jeu) + succès.
+  5: (raw) => ({
+    ...raw,
+    version: 6,
+    totalClicks: raw.totalClicks ?? 0,
+    playtimeMs: raw.playtimeMs ?? 0,
+    achievements: raw.achievements ?? {},
+  }),
 };
 
 /** Applique les migrations successives jusqu'à SAVE_VERSION. */

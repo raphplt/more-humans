@@ -19,3 +19,17 @@
   --space: 8px;
   --line-w: 1px;
 }
+
+/* L'accent évolue par ère Kardashev (posé par ThemeProvider via data-tier). Tier 0 = cyan d'origine. */
+[data-tier='1'] {
+  --accent: #46c98a; /* Planétaire : vert biosphère */
+  --accent-soft: #1f5d45;
+}
+[data-tier='2'] {
+  --accent: #9b8cf0; /* Stellaire : violet */
+  --accent-soft: #3a3170;
+}
+[data-tier='3'] {
+  --accent: #f0b24b; /* Galactique : or */
+  --accent-soft: #6a4d1c;
+}

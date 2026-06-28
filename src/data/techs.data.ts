@@ -35,7 +35,7 @@ export const TECHS: TechDef[] = [
     tier: 0,
     name: 'Machine à vapeur',
     description: "Grand saut d'énergie ; ouvre la transition vers le Tier I.",
-    cost: { knowledge: new Decimal(3000) },
+    cost: { knowledge: new Decimal('1e4') },
     requires: ['metallurgy'],
     effects: [
       { kind: 'multiplyProduction', resource: 'energy', factor: 3 },
@@ -60,7 +60,7 @@ export const TECHS: TechDef[] = [
     description: 'La recherche systématique multiplie fortement le savoir.',
     cost: { knowledge: new Decimal('3e5') },
     requires: ['electrification'],
-    effects: [{ kind: 'multiplyProduction', resource: 'knowledge', factor: 5 }],
+    effects: [{ kind: 'multiplyProduction', resource: 'knowledge', factor: 3 }],
   },
   {
     id: 'grid_optimization',
@@ -94,10 +94,47 @@ export const TECHS: TechDef[] = [
     tier: 1,
     name: 'Astronautique',
     description: "Premiers pas vers l'espace — ouvre la transition vers le Tier II.",
-    cost: { knowledge: new Decimal('6e10') },
+    cost: { knowledge: new Decimal('6e11') },
     requires: ['fusion'],
     effects: [{ kind: 'unlockTier', level: 2 }],
     unlocksTierTransition: 2,
+  },
+
+  // ---------- Tier II — Stellaire / essaim de Dyson ----------
+  {
+    id: 'orbital_logistics',
+    tier: 2,
+    name: 'Logistique orbitale',
+    description: 'Industrialise l’espace : double le rendement de Matière.',
+    cost: { knowledge: new Decimal('5e11') },
+    effects: [{ kind: 'multiplyProduction', resource: 'resources', factor: 2 }],
+  },
+  {
+    id: 'dyson_lattice',
+    tier: 2,
+    name: 'Treillis de Dyson',
+    description: 'Premier palier de l’essaim : double la puissance captée.',
+    cost: { knowledge: new Decimal('5e12') },
+    requires: ['orbital_logistics'],
+    effects: [{ kind: 'multiplyProduction', resource: 'energy', factor: 2 }],
+  },
+  {
+    id: 'stellar_husbandry',
+    tier: 2,
+    name: 'Élevage stellaire',
+    description: 'Optimise la collecte autour de l’étoile : quadruple la puissance — palier final.',
+    cost: { knowledge: new Decimal('1e16') },
+    requires: ['dyson_lattice'],
+    effects: [{ kind: 'multiplyProduction', resource: 'energy', factor: 4 }],
+  },
+  {
+    id: 'matrioshka_brain',
+    tier: 2,
+    name: 'Cerveau de Matriochka',
+    description: 'Calcul à l’échelle stellaire : quintuple le savoir.',
+    cost: { knowledge: new Decimal('2e15') },
+    requires: ['stellar_husbandry'],
+    effects: [{ kind: 'multiplyProduction', resource: 'knowledge', factor: 5 }],
   },
 ];
 

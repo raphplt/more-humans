@@ -32,16 +32,22 @@ export interface GeneratorDef {
   effects?: Effect[]; // ex. relève la capacité, multiplie une prod
 }
 
-/** Achat unique qui modifie des multiplicateurs/règles. */
+/**
+ * Amélioration INCRÉMENTALE : un levier qu'on monte en NIVEAU (le clic « monte d'un étage » de
+ * l'item de base vers les améliorations). `effects` s'appliquent PAR NIVEAU ; `cost` est le coût de
+ * base, croissant via `costGrowth`. L'enjeu actif = quel levier monter en priorité.
+ */
 export interface UpgradeDef {
   id: string;
   tier: number;
   name: string;
   description?: string;
   cost: Partial<Record<ResourceId, Decimal>>;
+  costGrowth: number; // coût × ce facteur par niveau
+  maxLevel?: number; // certains leviers plafonnent
   unlock?: UnlockCondition;
   discover?: UnlockCondition;
-  effects: Effect[];
+  effects: Effect[]; // appliqués une fois PAR NIVEAU
 }
 
 /** Nœud de l'arbre techno. Porte la transformation de phase et les choix (exclusifs plus tard). */
@@ -109,7 +115,8 @@ export interface GameState {
   capacity: Decimal; // capacité de charge courante (pop max soutenable)
   tier: number; // tier Kardashev courant
   owned: Record<string, number>; // générateurs possédés (compte) — inclut l'autoclicker
-  purchased: Record<string, boolean>; // upgrades/techs achetés
+  purchased: Record<string, boolean>; // techs achetées (achat unique)
+  upgradeLevels: Record<string, number>; // améliorations incrémentales : niveau par id
   clickPower: Decimal; // Humains créés par clic (amorçage) / poussée par clic (pilotage)
   // accélérant du clic et sa cible (le "goulot" choisi), en régime pilotage
   drive: Decimal;
@@ -126,6 +133,24 @@ export interface GameState {
   discovered: Record<string, boolean>; // ids déjà RÉVÉLÉS (un révélé ne se re-cache pas)
   // --- mini-jeu actif du tier (état opaque, géré par le module) ---
   minigame?: unknown;
+  // --- instrumentation / rétention ---
+  totalClicks: number;
+  playtimeMs: number; // temps de jeu ACTIF cumulé (hors-ligne non compté)
+  achievements: Record<string, boolean>; // succès débloqués
   lastSaved: number; // timestamp (ms) pour la progression hors-ligne
   settings: Settings;
+}
+
+/** Bilan de la progression hors-ligne, présenté au retour du joueur. */
+export interface OfflineRecap {
+  elapsedMs: number;
+  populationGain: Decimal;
+}
+
+/** Succès : objectif à atteindre (carotte court terme), détecté par un prédicat pur sur l'état. */
+export interface AchievementDef {
+  id: string;
+  name: string;
+  description: string;
+  test: (state: GameState) => boolean;
 }

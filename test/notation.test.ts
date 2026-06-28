@@ -8,28 +8,35 @@ import {
 } from '../src/format/notation';
 
 const stripped = (s: string) => s.replace(/\s/g, '');
+const noScientific = (s: string) => !/\d[eE][+-]?\d/.test(s) && !/[×^]/.test(s);
 
-describe('formatFull — chiffres pleins, jamais d’exposant', () => {
+describe('formatFull — mots pleins, jamais d’exposant', () => {
   it('petits entiers tels quels', () => {
     expect(formatFull(new Decimal(0))).toBe('0');
     expect(formatFull(new Decimal(999))).toBe('999');
   });
 
-  it('groupe par milliers', () => {
+  it('groupe par milliers sous un million', () => {
     expect(stripped(formatFull(new Decimal(1000)))).toBe('1000');
-    expect(stripped(formatFull(new Decimal(1234567)))).toBe('1234567');
+    expect(stripped(formatFull(new Decimal(123456)))).toBe('123456');
   });
 
-  it('reconstruit l’ordre de grandeur plein sans Number', () => {
-    expect(stripped(formatFull(new Decimal('1e7')))).toBe('10000000');
-    expect(stripped(formatFull(new Decimal('1e21')))).toBe('1' + '0'.repeat(21));
+  it('mots d’échelle longue au-delà du million', () => {
+    expect(formatFull(new Decimal('1e7'))).toBe('10 millions');
+    expect(formatFull(new Decimal('1e9'))).toBe('1 milliard');
+    expect(formatFull(new Decimal('1e21'))).toBe('1 trilliard');
+    expect(formatFull(new Decimal('3.8e26'))).toBe('380 quadrillions');
   });
 
-  it('AUCUNE notation scientifique à toutes les échelles', () => {
+  it('pluriel correct (s si ≥ 2)', () => {
+    expect(formatFull(new Decimal('1e6'))).toBe('1 million');
+    expect(formatFull(new Decimal('2e6'))).toBe('2 millions');
+    expect(formatFull(new Decimal('1.5e9'))).toBe('1,5 milliard');
+  });
+
+  it('jamais de notation scientifique à toutes les échelles', () => {
     for (const mag of ['1e7', '1e15', '1e21', '3.8e26', '1e100']) {
-      const out = formatFull(new Decimal(mag));
-      expect(/[eE^]/.test(out)).toBe(false);
-      expect(/^[\d\s]+$/.test(out)).toBe(true);
+      expect(noScientific(formatFull(new Decimal(mag)))).toBe(true);
     }
   });
 });
@@ -48,8 +55,8 @@ describe('kardashevLabel / formatWatts', () => {
     expect(kardashevLabel(new Decimal(1))).toBe('Type 0.00');
   });
 
-  it('watts en chiffres pleins suffixés', () => {
+  it('watts en mots pleins suffixés', () => {
     expect(formatWatts(new Decimal(1000)).endsWith(' W')).toBe(true);
-    expect(/[eE^]/.test(formatWatts(new Decimal('1e16')))).toBe(false);
+    expect(noScientific(formatWatts(new Decimal('1e16')))).toBe(true);
   });
 });

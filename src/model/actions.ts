@@ -1,6 +1,6 @@
 import Decimal from 'break_infinity.js';
 import type { GameState, ResourceId } from './types';
-import { canAfford, generatorBatchCost, isUnlocked } from './formulas';
+import { canAfford, generatorBatchCost, isUnlocked, upgradeBatchCost } from './formulas';
 import { clickRegime, collectModifiers } from './engine';
 import { generatorById } from '../data/generators.data';
 import { techById } from '../data/techs.data';
@@ -26,6 +26,7 @@ export function initialState(): GameState {
     tier: 0,
     owned: {},
     purchased: {},
+    upgradeLevels: {},
     clickPower: new Decimal(1),
     drive: new Decimal(0),
     driveTarget: 'growth',
@@ -34,6 +35,9 @@ export function initialState(): GameState {
     buyQuantity: 1,
     discovered: {},
     minigame: undefined,
+    totalClicks: 0,
+    playtimeMs: 0,
+    achievements: {},
     lastSaved: now(),
     settings: { notation: 'full', theme: 'instrument', transhumanLabels: false },
   };
@@ -54,12 +58,17 @@ function deduct(
 export function applyClick(state: GameState): GameState {
   const mods = collectModifiers(state);
   const power = state.clickPower.mul(mods.clickMult);
+  const totalClicks = state.totalClicks + 1;
   if (clickRegime(state) === 'bootstrap') {
     // Le clic crée TOUJOURS des Humains (l'accroche ne doit jamais rester sans réponse).
     const next = state.resources.population.amount.add(power);
-    return { ...state, resources: { ...state.resources, population: { amount: next } } };
+    return {
+      ...state,
+      totalClicks,
+      resources: { ...state.resources, population: { amount: next } },
+    };
   }
-  return { ...state, drive: Decimal.min(state.drive.add(power), DRIVE_CAP) };
+  return { ...state, totalClicks, drive: Decimal.min(state.drive.add(power), DRIVE_CAP) };
 }
 
 /** Achète un lot `buyQuantity` d'un générateur (atomique). No-op si non débloqué / non payable. */
@@ -89,13 +98,19 @@ export function applyBuyTech(state: GameState, id: string): GameState {
   };
 }
 
+/** Monte une amélioration de `buyQuantity` niveaux (atomique). No-op si non débloquée / non payable. */
 export function applyBuyUpgrade(state: GameState, id: string): GameState {
   const def = upgradeById(id);
-  if (!def || state.purchased[id] || !isUnlocked(state, def.unlock)) return state;
-  if (!canAfford(state, def.cost)) return state;
+  if (!def || !isUnlocked(state, def.unlock)) return state;
+  const level = state.upgradeLevels[id] ?? 0;
+  const room = def.maxLevel !== undefined ? def.maxLevel - level : Infinity;
+  const n = Math.min(state.buyQuantity, room);
+  if (n <= 0) return state;
+  const cost = upgradeBatchCost(def, level, n);
+  if (!canAfford(state, cost)) return state;
   return {
     ...state,
-    resources: deduct(state.resources, def.cost),
-    purchased: { ...state.purchased, [id]: true },
+    resources: deduct(state.resources, cost),
+    upgradeLevels: { ...state.upgradeLevels, [id]: level + n },
   };
 }
