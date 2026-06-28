@@ -2,10 +2,9 @@ import { useStore } from '../state/store';
 import { BOOTSTRAP_DONE, clickRegime } from '../model/engine';
 import { formatInt } from '../format/notation';
 
-// Mini-jeu du Tier 0 : l'amorçage lui-même (cf. 05_mechanics §3). Tangible et bref, conçu pour être
-// automatisé vite. Montre la progression vers la masse critique tant qu'on est en régime amorçage ;
-// une fois la logistique lancée, il s'efface (le geste devient du pilotage, géré par ClickTarget).
-export function DawnBootstrap() {
+// Mini-jeu du Tier 0 : barre de progression de l'amorçage vers la masse critique. S'efface en
+// régime drive (le geste devient du pilotage, géré par ClickTarget).
+export function DawnBootstrapView() {
   const pop = useStore((s) => s.resources.population.amount);
   const regime = useStore(clickRegime);
 

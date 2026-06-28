@@ -34,7 +34,7 @@ import { createRng } from '../src/core/rng';
 // Paramètres de simulation
 // ----------------------------------------------------------------------------------------------
 const FIXED = 0.1; // pas fixe du moteur (doit matcher core/loop.FIXED_STEP_S)
-const MAX_GAME_SECONDS = 2 * 3600; // durée max simulée par partie (au-delà : jalon UNREACHED)
+const MAX_GAME_SECONDS = 16 * 3600; // durée max simulée par partie (au-delà : jalon UNREACHED)
 const FOOD_RESERVE_SEC = 20; // le bot garde ~20 s de Vivres en réserve (ne se famine pas)
 const SEED = 12345;
 

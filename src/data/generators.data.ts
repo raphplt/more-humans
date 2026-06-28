@@ -1,19 +1,18 @@
 import Decimal from 'break_infinity.js';
 import type { GeneratorDef } from '../model/types';
 
-// Contenu data-driven. Chiffres = DRAFT d'équilibrage (se cale manette en main, cf. content §8).
-// `discover` = condition d'APPARITION (révélation progressive, cf. architecture §10) ; à défaut on
-// retombe sur `unlock`. L'écran de départ est quasi nu. Les générateurs d'un tier < tier courant
-// sont cull-és (repliés) automatiquement (cf. model/culling).
+// Chiffres calés au banc (`npm run sim`). `discover` = condition d'APPARITION (révélation), à défaut
+// `unlock`. L'énergie est une PUISSANCE (W), jamais un coût ; ses sorties montent par paliers modestes
+// (climb par NOMBRE d'unités) pour étaler chaque tier sur des heures.
 export const GENERATORS: GeneratorDef[] = [
-  // ---------- Tier 0 — L'Aube ----------
+  // ---------- Tier 0 — L'Aube (porte vers Tier I : 1e13 W) ----------
   {
     id: 'hunting_band',
     tier: 0,
     name: 'Bande de chasseurs-cueilleurs',
     description: 'Première automatisation : ramène lentement de nouveaux Humains.',
-    produces: { population: new Decimal('0.06') }, // autoclicker lent (alimente l'additif d'amorçage)
-    baseCost: { food: new Decimal(80) }, // payé en Vivres (JAMAIS en Humains)
+    produces: { population: new Decimal('0.06') },
+    baseCost: { food: new Decimal(80) },
     costGrowth: 1.3,
     discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(25) },
   },
@@ -26,46 +25,66 @@ export const GENERATORS: GeneratorDef[] = [
     baseCost: { food: new Decimal(300) },
     costGrowth: 1.22,
     discover: { kind: 'resource', resource: 'population', atLeast: new Decimal(25) },
-    effects: [{ kind: 'raiseFoodCeiling', amount: 25 }], // +25 à la capacité de population par ferme
+    effects: [{ kind: 'raiseFoodCeiling', amount: 25 }],
   },
   {
     id: 'woodfire',
     tier: 0,
     name: 'Foyers & combustion',
-    description: 'Première source de puissance harnachée (W).',
-    produces: { energy: new Decimal(5) },
-    baseCost: { resources: new Decimal(10) },
+    description: 'Première puissance harnachée (W).',
+    produces: { energy: new Decimal('1e3') },
+    baseCost: { resources: new Decimal(8) },
     costGrowth: 1.15,
-    discover: { kind: 'resource', resource: 'resources', atLeast: new Decimal(8) },
+    discover: { kind: 'resource', resource: 'resources', atLeast: new Decimal(6) },
   },
   {
     id: 'scholars',
     tier: 0,
     name: 'Lettrés',
     description: 'Une fraction de la population produit du savoir.',
-    produces: { knowledge: new Decimal(0.5) },
-    baseCost: { energy: new Decimal(50) },
+    produces: { knowledge: new Decimal('0.4') },
+    baseCost: { resources: new Decimal(60) },
     costGrowth: 1.2,
-    discover: { kind: 'resource', resource: 'energy', atLeast: new Decimal(20) },
+    discover: { kind: 'resource', resource: 'resources', atLeast: new Decimal(40) },
+  },
+  {
+    id: 'watermill',
+    tier: 0,
+    name: 'Moulins à eau & à vent',
+    description: 'Mécanise la puissance : un cran au-dessus du feu.',
+    produces: { energy: new Decimal('1e6') },
+    baseCost: { resources: new Decimal(120) },
+    costGrowth: 1.17,
+    discover: { kind: 'resource', resource: 'resources', atLeast: new Decimal(150) },
   },
   {
     id: 'coal_plant',
     tier: 0,
     name: 'Centrale à charbon',
-    description: "Grand saut d'énergie fossile — ouvre la voie au Tier I.",
-    produces: { energy: new Decimal(500) },
-    baseCost: { resources: new Decimal(5000), energy: new Decimal(1000) },
-    costGrowth: 1.18,
+    description: "Révolution industrielle : un saut de puissance qui ouvre la voie au Tier I.",
+    produces: { energy: new Decimal('3e11') },
+    baseCost: { resources: new Decimal(2000) },
+    costGrowth: 1.16,
     unlock: { kind: 'tech', id: 'metallurgy' },
   },
 
-  // ---------- Tier I — Planétaire (cf. content §4) ----------
+  // ---------- Tier I — Planétaire (porte vers Tier II : 1e16 W = Kardashev I) ----------
   {
     id: 'oil_plant',
     tier: 1,
     name: 'Raffinerie & thermique',
     description: 'Énergie fossile industrielle à grande échelle.',
-    produces: { energy: new Decimal('1e5') },
+    produces: { energy: new Decimal('2e12') },
+    baseCost: { resources: new Decimal('2e4') },
+    costGrowth: 1.16,
+    unlock: { kind: 'tier', atLeast: 1 },
+  },
+  {
+    id: 'university',
+    tier: 1,
+    name: 'Universités',
+    description: 'La recherche s’institutionnalise : grand bond de savoir.',
+    produces: { knowledge: new Decimal('3e4') },
     baseCost: { resources: new Decimal('5e4') },
     costGrowth: 1.18,
     unlock: { kind: 'tier', atLeast: 1 },
@@ -75,9 +94,9 @@ export const GENERATORS: GeneratorDef[] = [
     tier: 1,
     name: 'Réacteur à fission',
     description: 'Saut nucléaire : forte densité énergétique.',
-    produces: { energy: new Decimal('5e7') },
-    baseCost: { resources: new Decimal('1e7'), energy: new Decimal('5e6') },
-    costGrowth: 1.2,
+    produces: { energy: new Decimal('2e13') },
+    baseCost: { resources: new Decimal('2e6') },
+    costGrowth: 1.18,
     unlock: { kind: 'tech', id: 'electrification' },
   },
   {
@@ -85,9 +104,9 @@ export const GENERATORS: GeneratorDef[] = [
     tier: 1,
     name: 'Champ solaire',
     description: 'Renouvelable massif, plafonné par l’ensoleillement.',
-    produces: { energy: new Decimal('2e7') },
-    baseCost: { resources: new Decimal('2e7') },
-    costGrowth: 1.18,
+    produces: { energy: new Decimal('1e13') },
+    baseCost: { resources: new Decimal('1e6') },
+    costGrowth: 1.16,
     unlock: { kind: 'tech', id: 'renewables' },
   },
   {
@@ -95,9 +114,9 @@ export const GENERATORS: GeneratorDef[] = [
     tier: 1,
     name: 'Parc éolien',
     description: 'Renouvelable complémentaire du solaire.',
-    produces: { energy: new Decimal('1e7') },
-    baseCost: { resources: new Decimal('1e7') },
-    costGrowth: 1.18,
+    produces: { energy: new Decimal('5e12') },
+    baseCost: { resources: new Decimal('5e5') },
+    costGrowth: 1.16,
     unlock: { kind: 'tech', id: 'renewables' },
   },
   {
@@ -105,30 +124,31 @@ export const GENERATORS: GeneratorDef[] = [
     tier: 1,
     name: 'Réacteur à fusion',
     description: 'Fin de Tier I : énergie quasi-stellaire au sol.',
-    produces: { energy: new Decimal('5e11') },
-    baseCost: { resources: new Decimal('5e11'), energy: new Decimal('1e11') },
-    costGrowth: 1.22,
+    produces: { energy: new Decimal('5e14') },
+    baseCost: { resources: new Decimal('5e8') },
+    costGrowth: 1.2,
     unlock: { kind: 'tech', id: 'fusion' },
   },
 
-  // ---------- Tier II — Stellaire / essaim de Dyson (cf. content §5) ----------
+  // ---------- Tier II — Stellaire / essaim de Dyson (fin : 3.8e26 W = Kardashev II) ----------
+  // L'essaim se construit par NOMBRE (~100+ collecteurs × techs Dyson) pour étaler 1e16 → 3.8e26.
   {
     id: 'asteroid_mining',
     tier: 2,
     name: "Minage d'astéroïdes",
     description: "Matière première de l'essaim : énormément de Ressources.",
-    produces: { resources: new Decimal('1e9') },
-    baseCost: { resources: new Decimal('1e8'), energy: new Decimal('1e15') },
-    costGrowth: 1.18,
+    produces: { resources: new Decimal('1e12') },
+    baseCost: { resources: new Decimal('1e9') },
+    costGrowth: 1.22,
     unlock: { kind: 'tier', atLeast: 2 },
   },
   {
     id: 'orbital_collector',
     tier: 2,
     name: 'Collecteur orbital',
-    description: "Capte l'énergie du Soleil — palier de l'essaim de Dyson vers le Type II.",
-    produces: { energy: new Decimal('1e22') },
-    baseCost: { resources: new Decimal('1e16') },
+    description: "Capte l'énergie du Soleil — brique de l'essaim de Dyson vers le Type II.",
+    produces: { energy: new Decimal('8e22') },
+    baseCost: { resources: new Decimal('5e12') },
     costGrowth: 1.2,
     unlock: { kind: 'tier', atLeast: 2 },
   },
@@ -136,12 +156,12 @@ export const GENERATORS: GeneratorDef[] = [
     id: 'space_habitat',
     tier: 2,
     name: 'Habitat spatial',
-    description: 'La population vit hors-sol : relève fortement la capacité.',
+    description: 'La population vit hors-sol : relève la capacité.',
     produces: {},
-    baseCost: { resources: new Decimal('1e15'), energy: new Decimal('1e18') },
+    baseCost: { resources: new Decimal('1e12') },
     costGrowth: 1.18,
     unlock: { kind: 'tier', atLeast: 2 },
-    effects: [{ kind: 'raiseCapacity', factor: 1.2 }],
+    effects: [{ kind: 'raiseCapacity', factor: 1.03 }],
   },
 ];
 

@@ -10,7 +10,7 @@ import {
 // Mini-jeu du Tier II : le chantier orbital de l'essaim de Dyson (cf. 05_mechanics §3). Une seule
 // décision : où porter l'effort de construction — collecteurs (énergie, vers le Type II) ou habitats
 // (capacité, plus d'Humains hors-sol).
-export function DysonYard() {
+export function DysonYardView() {
   const minigame = useStore((s) => s.minigame);
   const setMinigame = useStore((s) => s.setMinigame);
 

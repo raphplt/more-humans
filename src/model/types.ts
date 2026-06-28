@@ -7,7 +7,8 @@ import Decimal from 'break_infinity.js';
 // 'food'       = Vivres : CONSOMMÉE par la population ; produite par la cueillette (plafonnée) + fermes.
 // 'resources'  = Matière : monnaie de construction (produite par le LABEUR de la population).
 // 'knowledge'  = monnaie de recherche (dépensée pour les techs).
-// 'energy'     = puissance harnachée (W) → moteur de capacité + porte Kardashev (dépensable).
+// 'energy'     = PUISSANCE harnachée (W) : grandeur DÉRIVÉE (somme des sorties × multiplicateurs),
+//                jamais accumulée ni dépensée → moteur de capacité + porte Kardashev. Cf. game-design §3.2.
 export type ResourceId = 'population' | 'food' | 'resources' | 'knowledge' | 'energy';
 
 /** Ressources dépensables (monnaies) — jamais la population. */

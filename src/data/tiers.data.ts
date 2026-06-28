@@ -2,8 +2,6 @@ import type { TierDef } from '../model/types';
 import { KARDASHEV_I, KARDASHEV_II, KARDASHEV_III } from './constants';
 import Decimal from 'break_infinity.js';
 
-// Définition des tiers Kardashev. Cf. 02_PHASES_AND_CONTENT.
-// energyThreshold = puissance (W) requise pour FRANCHIR ce tier vers le suivant.
 export const TIERS: TierDef[] = [
   {
     level: 0,

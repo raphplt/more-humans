@@ -21,7 +21,7 @@ const FOOD_BASE = new Decimal(1); // revenu de Vivres de base du territoire (pop
 const FORAGE_RATE = 0.07; // Vivres produits par cueilleur/s (revenu modeste, NON plafonné)
 const LABOR_RATE = 0.07; // Matière produite par laboureur/s
 const BASE_POP_CAP = new Decimal(25); // capacité initiale (avant fermes) — plafonne le clic (fondation)
-const CAPACITY_ENERGY_SCALE = new Decimal('1e12'); // l'énergie ne dope la capacité qu'aux échelles Kardashev
+const CAPACITY_ENERGY_SCALE = new Decimal('3e12'); // l'énergie ne dope la capacité qu'aux échelles Kardashev
 const KNOWLEDGE_PER_CAPITA = new Decimal('1e-4'); // savoir passif/hab./s
 const BASE_GROWTH_RATE = 0.005; // r de la logistique — n'agit qu'après l'agriculture
 const DRIVE_DECAY_PER_S = 0.5; // la poussée du clic retombe
@@ -133,7 +133,7 @@ export interface Flows {
   food: Decimal; // net Vivres/s (peut être négatif)
   resources: Decimal; // Matière/s
   knowledge: Decimal;
-  energy: Decimal;
+  energy: Decimal; // PUISSANCE instantanée (W) — pas un débit accumulé (cf. step : on la fixe)
   population: Decimal; // croissance nette/s
 }
 
@@ -160,9 +160,15 @@ export function computeFlows(state: GameState): Flows {
   ).add(gen.food);
   const netFood = foodProduction; // pas de consommation : revenu = production
 
-  // Capacité (limite de population) = base + apport des fermes (× énergie plus tard). Sans plafond
-  // dur : les fermes la relèvent indéfiniment. JAMAIS affichée (cf. capacity-never-displayed).
-  const energyFactor = state.resources.energy.amount.div(CAPACITY_ENERGY_SCALE).add(1);
+  // ÉNERGIE = PUISSANCE instantanée harnachée (W), PAS un stock accumulé/dépensable. C'est la somme
+  // des sorties des générateurs × multiplicateurs (cf. game-design §3.2, content §énergie). Elle est
+  // recalculée chaque tick (comme la capacité), affichée en W, et sert de porte Kardashev.
+  const energy = gen.energy.mul(mods.productionMult.energy);
+
+  // Capacité (limite de population) = base + apport des fermes, dopée par la PUISSANCE aux échelles
+  // Kardashev (négligeable au néolithique, dominante au Tier I+). Sans plafond dur : les fermes la
+  // relèvent indéfiniment. JAMAIS affichée (cf. capacity-never-displayed).
+  const energyFactor = energy.div(CAPACITY_ENERGY_SCALE).add(1);
   const capacity = BASE_POP_CAP.add(mods.foodCeilingBonus).mul(energyFactor).mul(mods.capacityFactor);
 
   const matiere = pop
@@ -176,7 +182,6 @@ export function computeFlows(state: GameState): Flows {
     .add(gen.knowledge)
     .mul(mods.productionMult.knowledge)
     .mul(researchBoost);
-  const energy = gen.energy.mul(mods.productionMult.energy);
 
   // Croissance (le clamp à la capacité se fait dans `step`) :
   // - additif (clic via store + bande) : amène des Humains directement ;
@@ -254,6 +259,8 @@ export function step(state: GameState, dt: number): GameState {
 
   // Aucun mur invisible : la population ne fait que monter (clic + bande = additif inconditionnel ;
   // la reproduction logistique plafonne d'elle-même à la capacité, sans jamais bloquer le reste).
+  // L'énergie est une PUISSANCE (W) : on la FIXE à sa valeur instantanée, on ne l'accumule pas (≠
+  // une monnaie). Les autres ressources sont des stocks qui accumulent ×dt.
   const next: GameState = {
     ...state,
     resources: {
@@ -261,7 +268,7 @@ export function step(state: GameState, dt: number): GameState {
       food: { amount: addStock(state.resources.food.amount, f.food) },
       resources: { amount: addStock(state.resources.resources.amount, f.resources) },
       knowledge: { amount: addStock(state.resources.knowledge.amount, f.knowledge) },
-      energy: { amount: addStock(state.resources.energy.amount, f.energy) },
+      energy: { amount: f.energy },
     },
     capacity: f.capacity,
     drive: state.drive.mul(Math.pow(DRIVE_DECAY_PER_S, dt)),

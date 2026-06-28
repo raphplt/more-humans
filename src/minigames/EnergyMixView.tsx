@@ -10,7 +10,7 @@ import {
 
 // Mini-jeu du Tier I : arbitrage du mix énergétique (cf. 05_mechanics §3). Une poignée de leviers,
 // pas de micro-management. Les sources s'ajoutent au mix quand leur tech est acquise (révélation).
-export function EnergyMix() {
+export function EnergyMixView() {
   const minigame = useStore((s) => s.minigame);
   const purchased = useStore((s) => s.purchased);
   const setMinigame = useStore((s) => s.setMinigame);
