@@ -3,9 +3,12 @@ import Decimal from 'break_infinity.js';
 // Le contrat de données du jeu. Cf. architecture §4.
 // Toute grandeur de jeu est un `Decimal` (break_infinity), jamais un `number` natif.
 
-// 'population' = LE score (ne se dépense JAMAIS, ne fait que monter).
-// 'food'       = Vivres : CONSOMMÉE par la population ; produite par la cueillette (plafonnée) + fermes.
-// 'resources'  = Matière : monnaie de construction (produite par le LABEUR de la population).
+// 'population' = LE score (ne se dépense JAMAIS, sauf chute en FAMINE — cf. 01 §4).
+// 'food'       = Vivres : TAMPON consommable (S). Produites par le territoire + cultivation ;
+//                consommées par la population (P·EAT). Vide (S≤0) → famine. Sert aussi de monnaie
+//                d'achat en Âge 0. Cf. 01 §2.
+// 'resources'  = Matière : monnaie de construction. HORS Âge 0 early ; revient à la rampe
+//                industrielle (cf. 01 §10).
 // 'knowledge'  = monnaie de recherche (dépensée pour les techs).
 // 'energy'     = PUISSANCE harnachée (W) : grandeur DÉRIVÉE (somme des sorties × multiplicateurs),
 //                jamais accumulée ni dépensée → moteur de capacité + porte Kardashev. Cf. game-design §3.2.
@@ -87,12 +90,18 @@ export type UnlockCondition =
   | { kind: 'tech'; id: string }
   | { kind: 'all'; of: UnlockCondition[] };
 
-export type DriveTarget = 'growth' | 'research' | 'construction';
+// Côté du curseur que la surpoussée du clic favorise (cf. 00 D3, 01 §3). En Âge 0 : 'growth'
+// booste les naissances, 'capacity' booste le défrichage (Cultivation).
+export type DriveTarget = 'growth' | 'capacity';
 
-/** Répartition de la population entre tâches (poids relatifs). Cœur de la boucle Tier 0. */
+/**
+ * Le COUTEAU MALTHUSIEN (cf. 00 D2/D3, 01 §1) : un seul curseur qui ventile l'effort de la
+ * population entre CROÎTRE MAINTENANT (naissances) et ÉLEVER LE PLAFOND (défrichage → Cap_sustain).
+ * `growth`/`capacity` = poids relatifs ; seule leur proportion compte (`c = capacity/(growth+capacity)`).
+ */
 export interface Allocation {
-  forage: number; // cueillette → Vivres
-  labor: number; // labeur → Matière
+  growth: number; // pousser les naissances maintenant
+  capacity: number; // défricher → relever le plafond nourricier (plus tard)
 }
 
 /** Régime du clic, DÉRIVÉ de l'état (pas un champ figé). Cf. 05_mechanics §1.3. */
@@ -112,7 +121,8 @@ export interface Settings {
 
 export interface GameState {
   resources: Record<ResourceId, ResourceState>;
-  capacity: Decimal; // capacité de charge courante (pop max soutenable)
+  capacity: Decimal; // Cap_sustain courant = pop soutenable (Fprod/EAT), dérivé/tick, jamais affiché
+  cultivation: Decimal; // terre défrichée cumulée → produit des Vivres (YIELD/pt). Cf. 01 §2
   tier: number; // tier Kardashev courant
   owned: Record<string, number>; // générateurs possédés (compte) — inclut l'autoclicker
   purchased: Record<string, boolean>; // techs achetées (achat unique)

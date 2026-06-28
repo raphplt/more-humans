@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import Decimal from 'break_infinity.js';
-import {
-  clickRegime,
-  computeFlows,
-  reproductionUnlocked,
-  step,
-  BOOTSTRAP_DONE,
-} from '../src/model/engine';
+import { clickRegime, computeFlows, step, BOOTSTRAP_DONE } from '../src/model/engine';
 import { applyBuyUpgrade, initialState } from '../src/model/actions';
 
 describe('clickRegime', () => {
@@ -17,15 +11,6 @@ describe('clickRegime', () => {
     expect(clickRegime(s)).toBe('bootstrap');
     s.resources.population.amount = BOOTSTRAP_DONE;
     expect(clickRegime(s)).toBe('drive');
-  });
-});
-
-describe('reproductionUnlocked', () => {
-  it('nécessite au moins une ferme', () => {
-    const s = initialState();
-    expect(reproductionUnlocked(s)).toBe(false);
-    s.owned = { farmland: 1 };
-    expect(reproductionUnlocked(s)).toBe(true);
   });
 });
 
@@ -49,8 +34,8 @@ describe('énergie = puissance dérivée', () => {
   });
 });
 
-describe('capacité', () => {
-  it('vaut la base sans énergie ni effets', () => {
+describe('capacité (Cap_sustain)', () => {
+  it('vaut FORAGE_BASE/EAT ≈ 25 sans énergie, cultivation ni effets', () => {
     expect(computeFlows(initialState()).capacity.eq(25)).toBe(true);
   });
 
@@ -95,10 +80,11 @@ describe('step', () => {
     expect(next.resources).not.toBe(s.resources);
   });
 
-  it('les Vivres s’accumulent (monnaie), pas l’énergie', () => {
+  it('le tampon de Vivres se remplit sous le plafond, pas l’énergie', () => {
     const s = initialState();
-    s.resources.population.amount = new Decimal(100);
+    s.resources.population.amount = new Decimal(10); // P < Cap_sustain (25) → Fprod > Fcons
     const next = step(s, 1);
     expect(next.resources.food.amount.gt(s.resources.food.amount)).toBe(true);
+    expect(next.resources.energy.amount.eq(0)).toBe(true);
   });
 });

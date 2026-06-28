@@ -1,46 +1,42 @@
 import Decimal from 'break_infinity.js';
 import type { ClickRegime, Effect, GameState, ResourceId } from './types';
-import { isUnlocked, logisticDelta } from './formulas';
+import {
+  births,
+  capSustain,
+  cultivationGain,
+  famineDeaths,
+  foodConsumption,
+  foodProduction,
+  isUnlocked,
+} from './formulas';
 import { computeTier } from './tiers';
 import { GENERATORS } from '../data/generators.data';
 import { TECHS } from '../data/techs.data';
 import { UPGRADES } from '../data/upgrades.data';
 import { minigameEffects } from '../minigames/effects';
 
-// engine.ts applique UN tick à pas fixe. Cœur du Tier 0 = la BOUCLE DE SUBSISTANCE :
-// la population est répartie (allocation) entre CUEILLETTE (→ Vivres) et LABEUR (→ Matière) ;
-// chaque Humain CONSOMME des Vivres ; la cueillette sauvage est PLAFONNÉE → il faut des fermes.
-// Cf. design-revelation-core / boucle de jeu. Tout est en Decimal.
+// engine.ts applique UN tick à pas fixe. Cœur de l'Âge 0 = le COUTEAU MALTHUSIEN (cf. 01) :
+// un curseur ventile l'effort entre CROÎTRE (naissances pilotées ∝ P) et ÉLEVER LE PLAFOND
+// (défrichage → Cultivation → Vivres → Cap_sustain). Chaque Humain CONSOMME des Vivres ; le tampon
+// de Vivres (S) absorbe le déficit, et VIDE (S≤0) il y a FAMINE : la population CHUTE. Tout en Decimal.
 
-// --- Constantes d'équilibrage (DRAFT, calées au banc `npm run sim`, cf. sim-bench) ---
-// Modèle : boucle COMPOSÉE sans plafond dur. Les Vivres sont une monnaie qui croît avec la pop
-// (pas de consommation/famine qui l'étrangle). Les fermes relèvent la CAPACITÉ (limite de pop) ;
-// la pop grandit vers la capacité ; le revenu de Vivres compose → on peut toujours acheter le
-// suivant, ça prend juste plus de temps. JAMAIS de cap codé en dur.
-const FOOD_BASE = new Decimal(1); // revenu de Vivres de base du territoire (pop = 0)
-const FORAGE_RATE = 0.07; // Vivres produits par cueilleur/s (revenu modeste, NON plafonné)
-const LABOR_RATE = 0.07; // Matière produite par laboureur/s
-const BASE_POP_CAP = new Decimal(25); // capacité initiale (avant fermes) — plafonne le clic (fondation)
-const CAPACITY_ENERGY_SCALE = new Decimal('3.2e13'); // l'énergie ne dope la capacité qu'aux échelles Kardashev
+// --- Constantes d'équilibrage (DRAFT, calées au banc `npm run sim`, cf. 01 §7) ---
+const EAT = 0.1; // Vivres consommées /hab/s
+const FORAGE_BASE = 2.5; // Vivres/s du territoire à P=0 (FORAGE_BASE/EAT ≈ 25 hab. « gratis »)
+const YIELD = 0.1; // Vivres/s par point de Cultivation
+const CLEAR = 0.006; // Cultivation défrichée /s par hab. du côté « capacité » (calé au banc)
+const BIRTH = 0.01; // taux de naissance malthusien max (à g=1) /s (calé au banc)
+const FAMINE = 0.05; // coefficient de décès quand le tampon est vide
+const CAPACITY_ENERGY_SCALE = new Decimal('3.2e13'); // l'énergie ne dope Cap_sustain qu'aux échelles Kardashev
 const KNOWLEDGE_PER_CAPITA = new Decimal('1e-4'); // savoir passif/hab./s
-const BASE_GROWTH_RATE = 0.005; // r de la logistique — n'agit qu'après l'agriculture
-const DRIVE_DECAY_PER_S = 0.5; // la poussée du clic retombe
+const DRIVE_DECAY_PER_S = 0.5; // la surpoussée du clic retombe
 
-/** Seuil de bascule amorçage → pilotage (cf. 05_mechanics §1.3). Draft. */
+/** Seuil de bascule amorçage → pilotage (cf. 01 §5). Draft. */
 export const BOOTSTRAP_DONE = new Decimal(500);
 
 /** Régime du clic, dérivé de l'état (monotone : une fois en 'drive', on y reste de fait). */
 export function clickRegime(state: GameState): ClickRegime {
   return state.resources.population.amount.gte(BOOTSTRAP_DONE) ? 'drive' : 'bootstrap';
-}
-
-/**
- * La reproduction (croissance logistique automatique) ne s'active qu'avec l'AGRICULTURE : tant
- * qu'on n'a pas bâti de ferme, la population ne monte que par le clic et la bande (autoclicker).
- * Le premier champ est donc un vrai cap : « la population croît désormais d'elle-même ».
- */
-export function reproductionUnlocked(state: GameState): boolean {
-  return (state.owned['farmland'] ?? 0) > 0;
 }
 
 // --- Modificateurs agrégés (effets actifs) ---
@@ -128,79 +124,75 @@ function generatorProduction(state: GameState): Record<ResourceId, Decimal> {
 /** Débits par seconde courants — partagés par `step` (×dt) et `rates` (affichage UI). */
 export interface Flows {
   mods: ActiveModifiers;
-  capacity: Decimal;
-  foodProduction: Decimal;
-  foodConsumption: Decimal;
-  food: Decimal; // net Vivres/s (peut être négatif)
+  capacity: Decimal; // Cap_sustain = pop soutenable (Fprod/EAT)
+  foodProduction: Decimal; // Fprod : Vivres produites/s
+  foodConsumption: Decimal; // Fcons : Vivres consommées/s (P·EAT)
+  food: Decimal; // net Vivres/s = Fprod − Fcons (peut être négatif → le tampon S se vide)
+  cultivation: Decimal; // défrichage/s (accumulé dans `state.cultivation`)
   resources: Decimal; // Matière/s
   knowledge: Decimal;
   energy: Decimal; // PUISSANCE instantanée (W) — pas un débit accumulé (cf. step : on la fixe)
-  population: Decimal; // croissance nette/s
+  population: Decimal; // croissance nette/s (naissances − décès ; PEUT être < 0 en famine)
 }
 
 export function computeFlows(state: GameState): Flows {
   const mods = collectModifiers(state);
   const pop = state.resources.population.amount;
 
-  // Allocation de la population entre cueillette et labeur.
-  const total = Math.max(1, state.allocation.forage + state.allocation.labor);
-  const fShare = state.allocation.forage / total;
-  const lShare = state.allocation.labor / total;
+  // Le COUTEAU : curseur c ∈ [0,1] (part capacité), g = 1 − c (part croissance).
+  const total = Math.max(1e-9, state.allocation.growth + state.allocation.capacity);
+  const c = Math.max(0, Math.min(1, state.allocation.capacity / total));
+  const g = 1 - c;
 
   const gen = generatorProduction(state);
 
-  // Poussée active du clic (pilotage), sur le goulot choisi.
+  // Surpoussée du clic (pilotage), appliquée au SEUL côté désigné par le curseur (driveTarget).
   const driveBoost = new Decimal(1).add(state.drive);
   const growthBoost = state.driveTarget === 'growth' ? driveBoost : new Decimal(1);
-  const researchBoost = state.driveTarget === 'research' ? driveBoost : new Decimal(1);
-  const buildBoost = state.driveTarget === 'construction' ? driveBoost : new Decimal(1);
+  const capacityBoost = state.driveTarget === 'capacity' ? driveBoost : new Decimal(1);
 
-  // Vivres = MONNAIE, revenu non plafonné qui croît avec la population (pas de consommation/famine).
-  const foodProduction = FOOD_BASE.add(
-    pop.mul(fShare).mul(FORAGE_RATE).mul(mods.productionMult.food),
-  ).add(gen.food);
-  const netFood = foodProduction; // pas de consommation : revenu = production
-
-  // ÉNERGIE = PUISSANCE instantanée harnachée (W), PAS un stock accumulé/dépensable. C'est la somme
-  // des sorties des générateurs × multiplicateurs (cf. game-design §3.2, content §énergie). Elle est
-  // recalculée chaque tick (comme la capacité), affichée en W, et sert de porte Kardashev.
+  // ÉNERGIE = PUISSANCE instantanée harnachée (W), PAS un stock accumulé/dépensable. Somme des
+  // sorties des générateurs × multiplicateurs ; recalculée chaque tick ; porte Kardashev.
   const energy = gen.energy.mul(mods.productionMult.energy);
 
-  // Capacité (limite de population) = base + apport des fermes, dopée par la PUISSANCE aux échelles
-  // Kardashev (négligeable au néolithique, dominante au Tier I+). Sans plafond dur : les fermes la
-  // relèvent indéfiniment. JAMAIS affichée (cf. capacity-never-displayed).
+  // Aux échelles Kardashev l'énergie généralise le plafond (nourriture → énergie). Négligeable au
+  // néolithique (energyFactor ≈ 1), dominante au Tier I+. Cf. 01 §10.
   const energyFactor = energy.div(CAPACITY_ENERGY_SCALE).add(1);
-  const capacity = BASE_POP_CAP.add(mods.foodCeilingBonus).mul(energyFactor).mul(mods.capacityFactor);
 
-  const matiere = pop
-    .mul(lShare)
-    .mul(LABOR_RATE)
-    .add(gen.resources)
-    .mul(mods.productionMult.resources)
-    .mul(buildBoost);
+  // Vivres produites (le plafond nourricier) : territoire + cultivation·YIELD + fermes (foodCeiling)
+  // + générateurs. raiseCapacity (agriculture/techs) et l'énergie multiplient Cap_sustain.
+  const foodMult = mods.productionMult.food.mul(energyFactor).mul(mods.capacityFactor);
+  const foodProd = foodProduction(FORAGE_BASE, state.cultivation, YIELD, gen.food, mods.foodCeilingBonus, foodMult);
+  const capacity = capSustain(foodProd, EAT);
+
+  // Tampon de Vivres S : dS = Fprod − Fcons (peut être négatif → S draine, plancher 0 dans `step`).
+  const foodCons = foodConsumption(pop, EAT);
+  const netFood = foodProd.sub(foodCons);
+
+  // Défrichage : la part « capacité » du curseur accumule de la Cultivation.
+  const dCultivation = cultivationGain(pop, c, CLEAR, capacityBoost);
+
+  // Matière : HORS Âge 0 (curseur binaire) — provient désormais des seuls générateurs (rampe).
+  const matiere = gen.resources.mul(mods.productionMult.resources);
   const knowledge = pop
     .mul(KNOWLEDGE_PER_CAPITA)
     .add(gen.knowledge)
-    .mul(mods.productionMult.knowledge)
-    .mul(researchBoost);
+    .mul(mods.productionMult.knowledge);
 
-  // Croissance (le clamp à la capacité se fait dans `step`) :
-  // - additif (clic via store + bande) : amène des Humains directement ;
-  // - logistique (reproduction auto) : SEULEMENT après l'agriculture (cf. reproductionUnlocked).
-  const additive = gen.population.mul(mods.productionMult.population);
-  const effectiveRate = growthBoost.mul(BASE_GROWTH_RATE).toNumber();
-  let logistic = reproductionUnlocked(state)
-    ? logisticDelta(pop, capacity, effectiveRate, 1)
-    : new Decimal(0);
-  if (logistic.lt(0)) logistic = new Decimal(0); // pop > capacité → plateau, pas de mort
-  const population = additive.add(logistic);
+  // Population : naissances pilotées (A + g·BIRTH·P) − décès de famine (UNIQUEMENT si S ≤ 0).
+  const additiveA = gen.population.mul(mods.productionMult.population);
+  const born = births(additiveA, pop, g, BIRTH, growthBoost);
+  const starving = state.resources.food.amount.lte(0);
+  const deaths = starving ? famineDeaths(foodCons, foodProd, EAT, FAMINE) : new Decimal(0);
+  const population = born.sub(deaths); // ⚠ peut être < 0 (famine)
 
   return {
     mods,
     capacity,
-    foodProduction,
-    foodConsumption: new Decimal(0), // plus de consommation (Vivres = monnaie) ; gardé pour l'API
+    foodProduction: foodProd,
+    foodConsumption: foodCons,
     food: netFood,
+    cultivation: dCultivation,
     resources: matiere,
     knowledge,
     energy,
@@ -258,10 +250,10 @@ export function step(state: GameState, dt: number): GameState {
     return next.lt(0) ? new Decimal(0) : next;
   };
 
-  // Aucun mur invisible : la population ne fait que monter (clic + bande = additif inconditionnel ;
-  // la reproduction logistique plafonne d'elle-même à la capacité, sans jamais bloquer le reste).
-  // L'énergie est une PUISSANCE (W) : on la FIXE à sa valeur instantanée, on ne l'accumule pas (≠
-  // une monnaie). Les autres ressources sont des stocks qui accumulent ×dt.
+  // La population PEUT chuter (famine) : `f.population < 0` draine le compte, planché à 0 par
+  // addStock (en pratique elle se stabilise vers Cap_sustain, cf. 01 §4). Le tampon de Vivres S
+  // accumule dS (planché 0 = vide). L'énergie est une PUISSANCE (W) : on la FIXE, on ne l'accumule
+  // pas. La Cultivation ne fait que monter (terre défrichée). Les autres sont des stocks ×dt.
   const next: GameState = {
     ...state,
     resources: {
@@ -272,6 +264,7 @@ export function step(state: GameState, dt: number): GameState {
       energy: { amount: f.energy },
     },
     capacity: f.capacity,
+    cultivation: state.cultivation.add(f.cultivation.mul(dt)),
     drive: state.drive.mul(Math.pow(DRIVE_DECAY_PER_S, dt)),
   };
 

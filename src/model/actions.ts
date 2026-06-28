@@ -17,12 +17,13 @@ export function initialState(): GameState {
   return {
     resources: {
       population: { amount: POP_START }, // départ à 0 : le clic crée les premiers Humains
-      food: { amount: new Decimal(100) }, // tampon de Vivres au départ (boucle de subsistance)
+      food: { amount: new Decimal(100) }, // tampon de Vivres initial S₀ (cf. 01 §7)
       resources: { amount: new Decimal(0) },
       knowledge: { amount: new Decimal(0) },
       energy: { amount: new Decimal(0) },
     },
-    capacity: new Decimal(0), // dérivée chaque tick (jamais affichée)
+    capacity: new Decimal(0), // Cap_sustain, dérivée chaque tick (jamais affichée)
+    cultivation: new Decimal(0), // aucune terre défrichée au départ
     tier: 0,
     owned: {},
     purchased: {},
@@ -30,7 +31,7 @@ export function initialState(): GameState {
     clickPower: new Decimal(1),
     drive: new Decimal(0),
     driveTarget: 'growth',
-    allocation: { forage: 1, labor: 0 }, // au début tout le monde cueille
+    allocation: { growth: 0, capacity: 1 }, // au début : tout sur la capacité (élever le plafond)
     autoclickers: {},
     buyQuantity: 1,
     discovered: {},

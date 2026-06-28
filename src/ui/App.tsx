@@ -43,15 +43,11 @@ function TierBanner() {
 function ObjectiveLine() {
   const pop = useStore((s) => s.resources.population.amount);
   const owned = useStore((s) => s.owned);
-  const labor = useStore((s) => s.allocation.labor);
   const tier = useStore((s) => s.tier);
 
   let text: string | null = null;
   if (pop.lt(25)) text = 'Clique sur « Peupler » pour faire naître les premiers Humains.';
   else if (!owned['hunting_band']) text = 'Bâtis une Bande de chasseurs pour automatiser la croissance.';
-  else if (!owned['farmland']) text = 'Cultive des Champs : la population croîtra alors d’elle-même.';
-  else if (pop.gte(250) && labor === 0)
-    text = 'Affecte de la population au Labeur : la Matière ouvre l’énergie et le savoir.';
   else if (tier === 0) text = 'Accumule de la puissance jusqu’à franchir l’ère Planétaire.';
 
   if (!text) return null;

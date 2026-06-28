@@ -4,7 +4,7 @@ import { UPGRADES } from '../data/upgrades.data';
 // Version de save + migrations. Cf. architecture §5.
 // Une save existante DOIT survivre aux updates : toute évolution de forme = +1 version + migration.
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** Forme sérialisée (les Decimal sont des strings). Volontairement permissive entre versions. */
 export interface SerializedSave {
@@ -17,6 +17,7 @@ export interface SerializedSave {
     energy: string;
   };
   capacity: string;
+  cultivation: string;
   tier: number;
   owned: Record<string, number>;
   purchased: Record<string, boolean>;
@@ -24,7 +25,7 @@ export interface SerializedSave {
   clickPower: string;
   drive: string;
   driveTarget: string;
-  allocation: { forage: number; labor: number };
+  allocation: { growth: number; capacity: number };
   autoclickers: Record<string, number>;
   buyQuantity: number;
   discovered: Record<string, boolean>;
@@ -90,6 +91,14 @@ const migrations: Record<number, Migration> = {
     totalClicks: raw.totalClicks ?? 0,
     playtimeMs: raw.playtimeMs ?? 0,
     achievements: raw.achievements ?? {},
+  }),
+  // v6 → v7 : couteau malthusien. allocation cueillette/labeur → croissance/capacité (reset au
+  // défaut « tout capacité ») ; nouveau champ Cultivation (terre défrichée). Cf. 01 §8.
+  6: (raw) => ({
+    ...raw,
+    version: 7,
+    allocation: { growth: 0, capacity: 1 },
+    cultivation: (raw.cultivation as string) ?? '0',
   }),
 };
 

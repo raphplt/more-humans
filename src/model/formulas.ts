@@ -72,8 +72,8 @@ export function canAfford(
 
 /**
  * DELTA logistique de population sur un pas `dt` (secondes) : r · P · (1 − P/Capacity) · dt.
- * Cf. game-design §3.3. Nul quand P = 0 → c'est pourquoi le moteur ajoute un terme additif
- * d'amorçage `A` par-dessus (cf. 05_mechanics §1.2). Composer : ΔP = (A + cette valeur).
+ * HÉRITÉ : l'Âge 0 ne s'en sert plus (remplacé par naissances pilotées + tampon + famine, cf.
+ * 01 §6). Conservé pour les âges/outils qui voudraient une courbe en S « gratuite ».
  */
 export function logisticDelta(
   pop: Decimal,
@@ -84,6 +84,72 @@ export function logisticDelta(
   if (capacity.lte(0)) return new Decimal(0);
   const ratio = pop.div(capacity); // P/Capacity
   return pop.mul(rate * dt).mul(Decimal.sub(1, ratio));
+}
+
+// ── Le couteau malthusien (Âge 0) — formes d'équations centralisées (cf. 01 §3). Les CONSTANTES
+// (EAT, BIRTH…) vivent dans engine.ts (tunées au banc) et sont passées ici en paramètres : seules
+// les FORMES sont figées ici, les chiffres restent réglables. ──
+
+/** Vivres produites/s : (base territoire + cultivation·YIELD + fermes + bonus) × multiplicateurs. */
+export function foodProduction(
+  forageBase: number,
+  cultivation: Decimal,
+  yieldPerCultivation: number,
+  genFood: Decimal,
+  foodCeilingBonus: Decimal,
+  mult: Decimal,
+): Decimal {
+  return new Decimal(forageBase)
+    .add(cultivation.mul(yieldPerCultivation))
+    .add(genFood)
+    .add(foodCeilingBonus)
+    .mul(mult);
+}
+
+/** Vivres consommées/s : un appétit fixe par habitant. */
+export function foodConsumption(pop: Decimal, eat: number): Decimal {
+  return pop.mul(eat);
+}
+
+/** Population SOUTENABLE = le plafond ressenti = production / appétit. */
+export function capSustain(foodProd: Decimal, eat: number): Decimal {
+  return eat <= 0 ? new Decimal(0) : foodProd.div(eat);
+}
+
+/** Cultivation défrichée/s : part « capacité » du curseur × pop × CLEAR, surpoussée éventuelle. */
+export function cultivationGain(
+  pop: Decimal,
+  capacityShare: number,
+  clear: number,
+  boost: Decimal,
+): Decimal {
+  return pop.mul(capacityShare).mul(clear).mul(boost);
+}
+
+/** Naissances/s : amorçage additif A + terme malthusien piloté (part « croissance » × BIRTH × P). */
+export function births(
+  additiveA: Decimal,
+  pop: Decimal,
+  growthShare: number,
+  birth: number,
+  boost: Decimal,
+): Decimal {
+  return additiveA.add(pop.mul(growthShare).mul(birth).mul(boost));
+}
+
+/**
+ * Décès de famine/s quand le tampon est vide : FAMINE × surplus de bouches (Fcons − Fprod)/EAT.
+ * Le moteur ne l'applique QUE si S ≤ 0 (le tampon absorbe tant qu'il reste plein). Cf. 01 §4.
+ */
+export function famineDeaths(
+  foodCons: Decimal,
+  foodProd: Decimal,
+  eat: number,
+  famine: number,
+): Decimal {
+  const deficit = foodCons.sub(foodProd);
+  if (deficit.lte(0) || eat <= 0) return new Decimal(0);
+  return deficit.div(eat).mul(famine);
 }
 
 /** Multiplicateur agrégé d'un certain type d'effet, à partir des effets actifs. */
